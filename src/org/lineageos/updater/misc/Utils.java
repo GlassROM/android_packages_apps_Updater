@@ -140,7 +140,8 @@ public class Utils {
                 if (!compatibleOnly || isCompatible(update)) {
                     updates.add(update);
                 } else {
-                    Log.d(TAG, "Ignoring incompatible update " + update.getName());
+                    Log.d(TAG, "Incompatible update but adding anyway ( ͡° ͜ʖ ͡°) " + update.getName());
+		    updates.add(update);
                 }
             } catch (JSONException e) {
                 Log.e(TAG, "Could not parse update object, index=" + i, e);
@@ -161,9 +162,7 @@ public class Utils {
             serverUrl = context.getString(R.string.updater_server_url);
         }
 
-        return serverUrl.replace("{device}", device)
-                .replace("{type}", type)
-                .replace("{incr}", incrementalVersion);
+        return serverUrl;
     }
 
     public static String getUpgradeBlockedURL(Context context) {
