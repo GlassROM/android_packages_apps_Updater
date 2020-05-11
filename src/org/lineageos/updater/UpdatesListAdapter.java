@@ -89,6 +89,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
         DELETE,
         CANCEL_INSTALLATION,
         REBOOT,
+        STREAM_OTA,
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
@@ -147,7 +148,15 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
         boolean canDelete = false;
 
         final String downloadId = update.getDownloadId();
-        if (mUpdaterController.isDownloading(downloadId)) {
+        final Boolean streamUpdate = PreferenceManager.getDefaultSharedPreferences(viewHolder.itemView.getContext())
+                .getBoolean(Constants.PREF_STREAM_OTA, false);
+
+        if(streamUpdate && !(mUpdaterController.isInstallingABUpdate() || mUpdaterController.isInstallingUpdate(downloadId) || mUpdaterController.isWaitingForReboot(downloadId))) {
+            canDelete = false;
+            setButtonAction(viewHolder.mAction,
+                    Action.STREAM_OTA,
+                    downloadId, !isBusy());
+	} else if (mUpdaterController.isDownloading(downloadId)) {
             canDelete = true;
             String downloaded = StringGenerator.bytesToMegabytes(mActivity,
                     update.getFile().length());
@@ -203,10 +212,16 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
 
     private void handleNotActiveStatus(ViewHolder viewHolder, UpdateInfo update) {
         final String downloadId = update.getDownloadId();
+        final Boolean streamUpdate = PreferenceManager.getDefaultSharedPreferences(viewHolder.itemView.getContext())
+                .getBoolean(Constants.PREF_STREAM_OTA, false);
         if (mUpdaterController.isWaitingForReboot(downloadId)) {
             viewHolder.itemView.setOnLongClickListener(
                     getLongClickListener(update, false, viewHolder.mBuildDate));
             setButtonAction(viewHolder.mAction, Action.REBOOT, downloadId, true);
+	} else if(streamUpdate && !(mUpdaterController.isInstallingABUpdate() || mUpdaterController.isInstallingUpdate(downloadId))) {
+            setButtonAction(viewHolder.mAction,
+                    Action.STREAM_OTA,
+                    downloadId, !isBusy());
         } else if (update.getPersistentStatus() == UpdateStatus.Persistent.VERIFIED) {
             viewHolder.itemView.setOnLongClickListener(
                     getLongClickListener(update, true, viewHolder.mBuildDate));
@@ -408,6 +423,22 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
                 } : null;
             }
             break;
+            case STREAM_OTA: {
+                button.setText(R.string.action_stream);
+                button.setEnabled(enabled);
+                UpdateInfo update = mUpdaterController.getUpdate(downloadId);
+                final boolean canInstall = Utils.canInstall(update);
+                clickListener = enabled ? view -> {
+                    if (canInstall) {
+                        getInstallDialog(downloadId).show();
+                    } else {
+                        mActivity.showSnackbar(R.string.snack_update_not_installable,
+                                Snackbar.LENGTH_LONG);
+                    }
+                } : null;
+            }
+            break;
+
             default:
                 clickListener = null;
         }
