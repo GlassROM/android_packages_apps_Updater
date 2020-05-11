@@ -30,12 +30,17 @@ import org.lineageos.updater.model.Update;
 import org.lineageos.updater.model.UpdateStatus;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.Reader;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Scanner;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -180,20 +185,52 @@ class ABUpdateInstaller {
         long offset;
         String[] headerKeyValuePairs;
         try {
-            ZipFile zipFile = new ZipFile(file);
-            offset = Utils.getZipEntryOffset(zipFile, Constants.AB_PAYLOAD_BIN_PATH);
-            ZipEntry payloadPropEntry = zipFile.getEntry(Constants.AB_PAYLOAD_PROPERTIES_PATH);
-            try (InputStream is = zipFile.getInputStream(payloadPropEntry);
-                 InputStreamReader isr = new InputStreamReader(is);
-                 BufferedReader br = new BufferedReader(isr)) {
-                List<String> lines = new ArrayList<>();
-                for (String line; (line = br.readLine()) != null;) {
-                    lines.add(line);
+            String url = mUpdaterController.getActualUpdate(mDownloadId).getDownloadUrl();
+	    URL link = new URL(url + ".metadata");
+            List<String> lines = new ArrayList<>();
+            if(!streamUpdate) {
+                ZipFile zipFile = new ZipFile(file);
+                offset = Utils.getZipEntryOffset(zipFile, Constants.AB_PAYLOAD_BIN_PATH);
+                ZipEntry payloadPropEntry = zipFile.getEntry(Constants.AB_PAYLOAD_PROPERTIES_PATH);
+
+                try (InputStream is = zipFile.getInputStream(payloadPropEntry);
+                     InputStreamReader isr = new InputStreamReader(is);
+                     BufferedReader br = new BufferedReader(isr)) {
+                    for (String line; (line = br.readLine()) != null; ) {
+                        lines.add(line);
+                    }
+                    headerKeyValuePairs = new String[lines.size()];
+                    headerKeyValuePairs = lines.toArray(headerKeyValuePairs);
                 }
-                headerKeyValuePairs = new String[lines.size()];
-                headerKeyValuePairs = lines.toArray(headerKeyValuePairs);
+                zipFile.close();
+            } else {
+                offset=-1;
+                final InputStream is = link.openStream();
+                final Reader r = new InputStreamReader(is);
+                final BufferedReader br = new BufferedReader(r);
+                Scanner sc = new Scanner(br);
+                int i=0;
+                try {
+                    for (;;) {
+                        if(i==0) {
+                            offset=sc.nextLong();
+                            i++;
+                        } else
+                            lines.add(sc.nextLine());
+                    }
+                } catch (NoSuchElementException e) {}
+                finally {
+                    if (offset<0 || lines.size() < 1) {
+                        Log.wtf(TAG,"rejecting streamed update metadata. check if your metadata is correct");
+                        mUpdaterController.getActualUpdate(mDownloadId)
+                                .setStatus(UpdateStatus.INSTALLATION_FAILED);
+                        mUpdaterController.notifyUpdateChange(mDownloadId);
+                        return false;
+                    }
+                    headerKeyValuePairs = new String[lines.size()];
+                    headerKeyValuePairs = lines.toArray(headerKeyValuePairs);
+                }
             }
-            zipFile.close();
         } catch (IOException | IllegalArgumentException e) {
             Log.e(TAG, "Could not prepare " + file, e);
             mUpdaterController.getActualUpdate(mDownloadId)
@@ -218,7 +255,7 @@ class ABUpdateInstaller {
         mUpdateEngine.setPerformanceMode(enableABPerfMode);
         String zipFileUri = null;
         if (streamUpdate) {
-            zipFileUri = mUpdaterController.getActualUpdate(downloadId).getDownloadUrl();
+            zipFileUri = mUpdaterController.getActualUpdate(mDownloadId).getDownloadUrl();
         } else {
             zipFileUri = "file://" + file.getAbsolutePath();
         }
