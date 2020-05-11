@@ -210,9 +210,15 @@ class ABUpdateInstaller {
 
         boolean enableABPerfMode = PreferenceManager.getDefaultSharedPreferences(mContext)
                 .getBoolean(Constants.PREF_AB_PERF_MODE, false);
+        boolean streamUpdate = PreferenceManager.getDefaultSharedPreferences(mContext)
+                .getBoolean(Constants.PREF_STREAM_OTA, false);
         mUpdateEngine.setPerformanceMode(enableABPerfMode);
-
-        String zipFileUri = "file://" + file.getAbsolutePath();
+        String zipFileUri = null;
+        if (streamUpdate) {
+            zipFileUri = mUpdaterController.getActualUpdate(downloadId).getDownloadUrl();
+        } else {
+            zipFileUri = "file://" + file.getAbsolutePath();
+        }
         mUpdateEngine.applyPayload(zipFileUri, offset, 0, headerKeyValuePairs);
 
         mUpdaterController.getActualUpdate(mDownloadId).setStatus(UpdateStatus.INSTALLING);
