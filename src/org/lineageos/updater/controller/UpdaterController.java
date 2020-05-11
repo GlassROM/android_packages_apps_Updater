@@ -276,6 +276,8 @@ public class UpdaterController {
     }
 
     private boolean fixUpdateStatus(Update update) {
+        if (update == null)
+            return true;
         switch (update.getPersistentStatus()) {
             case UpdateStatus.Persistent.VERIFIED:
             case UpdateStatus.Persistent.INCOMPLETE:

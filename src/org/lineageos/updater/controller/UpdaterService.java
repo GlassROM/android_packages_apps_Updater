@@ -192,11 +192,12 @@ public class UpdaterService extends Service {
         } else if (ACTION_INSTALL_UPDATE.equals(intent.getAction())) {
             String downloadId = intent.getStringExtra(EXTRA_DOWNLOAD_ID);
             UpdateInfo update = mUpdaterController.getUpdate(downloadId);
-            if (update.getPersistentStatus() != UpdateStatus.Persistent.VERIFIED) {
-                throw new IllegalArgumentException(update.getDownloadId() + " is not verified");
+            if (update != null ? update.getPersistentStatus() != UpdateStatus.Persistent.VERIFIED : false) {
+                if(!Utils.isABDevice())
+                    throw new IllegalArgumentException(update.getDownloadId() + " is not verified");
             }
             try {
-                if (Utils.isABUpdate(update.getFile())) {
+                if (Utils.isABUpdate(update != null ? update.getFile() : null)) {
                     ABUpdateInstaller installer = ABUpdateInstaller.getInstance(this,
                             mUpdaterController);
                     installer.install(downloadId);

@@ -491,7 +491,7 @@ public class UpdatesListAdapter extends RecyclerView.Adapter<UpdatesListAdapter.
         UpdateInfo update = mUpdaterController.getUpdate(downloadId);
         int resId;
         try {
-            if (Utils.isABUpdate(update.getFile())) {
+            if (Utils.isABUpdate(update != null ? update.getFile() : null)) {
                 resId = R.string.apply_update_dialog_message_ab;
             } else {
                 resId = R.string.apply_update_dialog_message;

@@ -163,8 +163,13 @@ class ABUpdateInstaller {
 
         mDownloadId = downloadId;
 
-        File file = mUpdaterController.getActualUpdate(mDownloadId).getFile();
-        if (!file.exists()) {
+        boolean streamUpdate = PreferenceManager.getDefaultSharedPreferences(mContext)
+                .getBoolean(Constants.PREF_STREAM_OTA, false);
+
+        File file = null;
+        if (!streamUpdate)
+            file = mUpdaterController.getActualUpdate(mDownloadId).getFile();
+        if (file != null ? !file.exists() : false) {
             Log.e(TAG, "The given update doesn't exist");
             mUpdaterController.getActualUpdate(downloadId)
                     .setStatus(UpdateStatus.INSTALLATION_FAILED);
@@ -210,8 +215,6 @@ class ABUpdateInstaller {
 
         boolean enableABPerfMode = PreferenceManager.getDefaultSharedPreferences(mContext)
                 .getBoolean(Constants.PREF_AB_PERF_MODE, false);
-        boolean streamUpdate = PreferenceManager.getDefaultSharedPreferences(mContext)
-                .getBoolean(Constants.PREF_STREAM_OTA, false);
         mUpdateEngine.setPerformanceMode(enableABPerfMode);
         String zipFileUri = null;
         if (streamUpdate) {

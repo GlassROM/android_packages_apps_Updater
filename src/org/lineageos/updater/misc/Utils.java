@@ -356,10 +356,12 @@ public class Utils {
     }
 
     public static boolean isABUpdate(File file) throws IOException {
-        ZipFile zipFile = new ZipFile(file);
-        boolean isAB = isABUpdate(zipFile);
-        zipFile.close();
-        return isAB;
+        if(file != null) {
+            ZipFile zipFile = new ZipFile(file);
+            boolean isAB = isABUpdate(zipFile);
+            zipFile.close();
+            return isAB;
+        } else { return isABDevice(); }
     }
 
     public static boolean hasTouchscreen(Context context) {
